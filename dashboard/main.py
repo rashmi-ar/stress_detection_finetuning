@@ -5,12 +5,13 @@ from dash.long_callback import DiskcacheLongCallbackManager
 from dash.dependencies import Input, Output
 import dash_daq as daq
 from dash import dcc
-import stress_detection as stress
+import stress_level_detection as stress
 import sklearn
 import numpy as np
 from tensorflow import keras
 import plotly.express as px
 import dash_bootstrap_components as dbc
+import pandas as pd
 
 ## Diskcache
 import diskcache
@@ -18,6 +19,7 @@ cache = diskcache.Cache("./cache")
 long_callback_manager = DiskcacheLongCallbackManager(cache)
 
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
+#external_stylesheets = [dbc.themes.BOOTSTRAP]
 #[dbc.themes.BOOTSTRAP]
 #[dbc.themes.CYBORG]
 #"https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
@@ -32,15 +34,20 @@ red_button_style = {'background-color': 'red',
                     'margin-top': '50px',
                     'margin-left': '50px'}
 
+
 app.layout = html.Div(
     [
         html.Br(),
 
-        html.H3("STRESS DETECTION DASHBOARD", 
+        html.H4(id="paragraph_1", children=[]),
+
+        html.H2("STRESS DETECTION DASHBOARD", 
                 style={"marginTop": 5, 
                        "marginLeft": "40px",
                        'color':'black',
-                       }), #'text-align': 'center',"border":"2px black solid"
+                       'text-align': 'center',
+                       "border":"2px black solid",
+                       }), 
         
         html.H6("Select participant:", style={'text-align': 'left'},),
         html.Div([
@@ -48,12 +55,34 @@ app.layout = html.Div(
                 dcc.Dropdown(id="select_pid",
                     #options=participants_list,
                     options = [
-                        {'label': 'Participant 1', 'value':'p0'},
-                        {'label': 'Participant 2', 'value':'p1'},
-                        {'label': 'Participant 3', 'value':'p2', 'disabled': True},
+                        {'label': 'Participant 0', 'value':'p00'},
+                        {'label': 'Participant 1', 'value':'p01'},
+                        {'label': 'Participant 2', 'value':'p02', 'disabled': True},
+                        {'label': 'Participant 3', 'value':'p03'},
+                        {'label': 'Participant 4', 'value':'p04'},
+                        {'label': 'Participant 5', 'value':'p05'},
+                        {'label': 'Participant 6', 'value':'p06'},
+                        {'label': 'Participant 7', 'value':'p07'},
+                        {'label': 'Participant 8', 'value':'p08'},
+                        {'label': 'Participant 9', 'value':'p09'},
+                        {'label': 'Participant 10', 'value':'p10'},
+                        {'label': 'Participant 11', 'value':'p11'},
+                        {'label': 'Participant 12', 'value':'p12'},
+                        {'label': 'Participant 13', 'value':'p13'},
+                        {'label': 'Participant 14', 'value':'p14'},
+                        {'label': 'Participant 15', 'value':'p15'},
+                        {'label': 'Participant 16', 'value':'p16'},
+                        {'label': 'Participant 17', 'value':'p17'},
+                        {'label': 'Participant 18', 'value':'p18', 'disabled': True},
+                        {'label': 'Participant 19', 'value':'p19'},
+                        {'label': 'Participant 20', 'value':'p20', 'disabled': True},
+                        {'label': 'Participant 21', 'value':'p21'},
+                        {'label': 'Participant 22', 'value':'p22'},
+                        {'label': 'Participant 23', 'value':'p23'},
+                        {'label': 'Participant 24', 'value':'p24'},
                     ],
                     multi=False,
-                    value='p0',
+                    value='p00',
                     style={'width': "60%", 'align-items': 'center'},
                     #placeholder="Select participant",
                     #searchable=False
@@ -109,10 +138,10 @@ app.layout = html.Div(
     ]
 )
 
-
 @app.long_callback(
-    output=[Output("stress_meter", "value"), 
-            Output("final_output", "children")],
+    output=[Output("stress_meter", "value"),
+            Output("paragraph_1", "children"),
+            Output('final_output',"children")],
     inputs=[Input("select_pid", "value"),
             Input('detect_button', 'n_clicks')],
     running=[
@@ -125,68 +154,57 @@ app.layout = html.Div(
         ),
     ],
     cancel=[Input("cancel_button_id", "n_clicks")],
-    progress=[Output("stress_meter", "value"),Output("label_output","children"),],
-    prevent_initial_call=True,
+    progress=[Output("stress_meter", "value"),Output("final_output","children"),],
+    prevent_initial_call=True, manager=long_callback_manager,
 )
 
 def detect_stress(set_progress, pid_selected, detect_action):
     display = ""
-    meter = 0
-    container = ""
+    container = [""]
+    message = [""]
     meter_val = 0
-    zero, one, two = 0, 0, 0
 
     if(detect_action == 1):
-
-        #print(pid_selected)
         
-        data = {}
         X_test = []
-        data = stress.read_processed_data(pid_selected)
         print("data read")
 
-        X_test = stress.prepare_data(data)
+        X_test = stress.read_test_data(pid_selected)
         print("data prepared")
         
-        model_path = 'dashboard\\my_model.h5'
+        model_path = 'dashboard\\kfold_fcn_[\''+str(pid_selected)+'\'].h5'
+
+        print(model_path)
         model = keras.models.load_model(model_path)
         print("model loaded")
         
         preds = model.predict(X_test)
+        print(preds)
 
-        labels = np.argmax(preds,axis=1)
-
-        res = np.max(preds, axis = 1) 
+        label = np.max(preds, axis = 1) 
+        print(label)
         print("res predicted")
 
-        for label in labels:
-            time.sleep(0.01)
-            #print(label)
-            if label == 0:
-                zero = zero + 1
-                display = "Processing..Zero.."
-                meter = 20
-            elif label == 1:
-                one = one + 1
-                display = "Processing..One.."
-                meter = 50
-            elif label == 2:
-                two = two + 1
-                display = "Processing..Two.."
-                meter = 80
-            set_progress((meter,display))
-        
-        if (zero >= one) and (zero >= two):
-            meter_val = 20
-            container = "You are cool as a cucumber!"
-        elif (one >= zero) and (one >= two):
-            meter_val = 50
-            container = "Live more, stress less!"
-        else:
-            meter_val = 80
-            container = "Give yourself a break. Don't stress too much!"
+        for i in label:
+            time.sleep(0.009)
+            display = ["Processing..."]
+            meter_val = (1-i)*100
+            set_progress((meter_val,display))
 
-    return meter_val, container
+        container = [""]
+
+        meter_val = (1-(np.mean(label)))*100
+
+        if meter_val >= 50:
+            message = ["Give yourself a break. Don't stress too much!"]
+        #elif meter_val < 70 and meter_val > 30:
+        #    return ["Live more, stress less!"]
+        elif meter_val < 50 and meter_val >= 1:
+            message = ["You are cool as a cucumber!"]
+        else:
+            message = [""]
+
+    return meter_val, container, message
 
 @app.callback([Output('graph_eda', 'figure'), 
                Output('graph_bvp', 'figure'),],
@@ -199,7 +217,6 @@ def set_graphs(pid_selected, detect_action):
         df_eda, df_bvp = stress.read_raw_data(pid_selected)
     
         fig_eda = px.line(df_eda, x='time', y='eda', title='Your EDA data')
-        type(fig_eda)
         fig_bvp = px.line(df_bvp, x='time', y='bvp', title='Your BVP data')
 
         return fig_eda, fig_bvp
