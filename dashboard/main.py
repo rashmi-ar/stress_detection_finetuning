@@ -25,8 +25,6 @@ external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 #"https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
 app = dash.Dash(__name__, long_callback_manager=long_callback_manager, external_stylesheets=external_stylesheets)
 
-participants_list = ['p0', 'p1', 'p3',]
-
 red_button_style = {'background-color': 'red',
                     'color': 'white',
                     'height': '50px',
@@ -38,8 +36,6 @@ red_button_style = {'background-color': 'red',
 app.layout = html.Div(
     [
         html.Br(),
-
-        html.H4(id="paragraph_1", children=[]),
 
         html.H2("STRESS DETECTION DASHBOARD", 
                 style={"marginTop": 5, 
@@ -139,9 +135,7 @@ app.layout = html.Div(
 )
 
 @app.long_callback(
-    output=[Output("stress_meter", "value"),
-            Output("paragraph_1", "children"),
-            Output('final_output',"children")],
+    output=[Output('final_output',"children")],
     inputs=[Input("select_pid", "value"),
             Input('detect_button', 'n_clicks')],
     running=[
@@ -159,9 +153,8 @@ app.layout = html.Div(
 )
 
 def detect_stress(set_progress, pid_selected, detect_action):
+    print(detect_action)
     display = ""
-    container = [""]
-    message = [""]
     meter_val = 0
 
     if(detect_action == 1):
@@ -184,27 +177,20 @@ def detect_stress(set_progress, pid_selected, detect_action):
         label = np.max(preds, axis = 1) 
         print(label)
         print("res predicted")
+        count = 0
 
         for i in label:
-            time.sleep(0.009)
-            display = ["Processing..."]
+            time.sleep(0.09)
             meter_val = (1-i)*100
+            if meter_val >= 50:
+                display = ["Give yourself a break. Don't stress too much!"]
+    
+            elif meter_val < 50 and meter_val >= 1:
+                display = ["You are cool as a cucumber!"]
+
             set_progress((meter_val,display))
 
-        container = [""]
-
-        meter_val = (1-(np.mean(label)))*100
-
-        if meter_val >= 50:
-            message = ["Give yourself a break. Don't stress too much!"]
-        #elif meter_val < 70 and meter_val > 30:
-        #    return ["Live more, stress less!"]
-        elif meter_val < 50 and meter_val >= 1:
-            message = ["You are cool as a cucumber!"]
-        else:
-            message = [""]
-
-    return meter_val, container, message
+    return [display]
 
 @app.callback([Output('graph_eda', 'figure'), 
                Output('graph_bvp', 'figure'),],
